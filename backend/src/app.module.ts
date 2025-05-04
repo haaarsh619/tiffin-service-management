@@ -20,7 +20,8 @@ import { InvoicesModule } from './invoices/invoices.module';
     }),
     inject: [ConfigService],
   }), ConfigModule.forRoot({
-    isGlobal:true
+    isGlobal: true,
+    envFilePath: '.env',
   }),
     UsersModule,
     MenuModule,
