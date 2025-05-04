@@ -4,6 +4,7 @@ import { Repository } from 'typeorm';
 import { Payment } from '../entities/payment.entity';
 import { User } from '../entities/user.entity';
 import { CreatePaymentDto } from './dto/create-payment.dto';
+import { UpdatePaymentDto } from './dto/update-payment.dto';
 
 @Injectable()
 export class PaymentsService {
@@ -15,7 +16,7 @@ export class PaymentsService {
   ) {}
 
   async create(createPaymentDto: CreatePaymentDto): Promise<Payment> {
-    const { userId } = createPaymentDto;
+    const { userId, month } = createPaymentDto;
     const user = await this.userRepository.findOneBy({ id: userId });
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
@@ -27,15 +28,25 @@ export class PaymentsService {
     return this.paymentRepository.save(payment);
   }
 
-  async findAll(userId?: number, date?: string): Promise<Payment[]> {
+  async update(id: number, updatePaymentDto: UpdatePaymentDto): Promise<Payment> {
+    const payment = await this.paymentRepository.findOneBy({ id });
+    if (!payment) {
+      throw new NotFoundException(`Payment with ID ${id} not found`);
+    }
+    Object.assign(payment, updatePaymentDto);
+    payment.status = payment.paidAmount >= payment.amount ? 'paid' : 'unpaid';
+    return this.paymentRepository.save(payment);
+  }
+
+  async findAll(userId?: number, month?: string): Promise<Payment[]> {
     const query = this.paymentRepository
       .createQueryBuilder('payment')
       .leftJoinAndSelect('payment.user', 'user');
     if (userId) {
       query.where('payment.user = :userId', { userId });
     }
-    if (date) {
-      query.andWhere('payment.date = :date', { date });
+    if (month) {
+      query.andWhere('payment.month = :month', { month });
     }
     return query.getMany();
   }

@@ -6,6 +6,7 @@ import { User } from '../entities/user.entity';
 import { Order } from '../entities/order.entity';
 import { Payment } from '../entities/payment.entity';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import * as PDFDocument from 'pdfkit';
 
 @Injectable()
 export class InvoicesService {
@@ -33,7 +34,7 @@ export class InvoicesService {
     return this.invoiceRepository.save(invoice);
   }
 
-  async generateInvoice(userId: number, month: string): Promise<any> {
+  async generateInvoice(userId: number, month: string): Promise<Buffer> {
     const user = await this.userRepository.findOneBy({ id: userId });
     if (!user) {
       throw new NotFoundException(`User with ID ${userId} not found`);
@@ -41,27 +42,53 @@ export class InvoicesService {
 
     const orders = await this.orderRepository
       .createQueryBuilder('order')
+      .leftJoinAndSelect('order.menu', 'menu')
       .where('order.user = :userId', { userId })
       .andWhere('order.date LIKE :month', { month: `${month}%` })
       .getMany();
 
-    const payments = await this.paymentRepository
-      .createQueryBuilder('payment')
-      .where('payment.user = :userId', { userId })
-      .andWhere('payment.date LIKE :month', { month: `${month}%` })
-      .getMany();
+    const totalAmount = orders.reduce((sum, order) => sum + order.price, 0);
 
-    const totalOrders = orders.reduce((sum, order) => sum + order.price, 0);
-    const totalPayments = payments.reduce((sum, payment) => sum + payment.amount, 0);
-
-    return {
-      user,
+    const payment = await this.paymentRepository.findOneBy({
+      user: { id: userId },
       month,
-      orders,
-      payments,
-      totalOrders,
-      totalPayments,
-      balance: totalOrders - totalPayments,
-    };
+    });
+
+    const totalPaid = payment ? payment.paidAmount : 0;
+    const totalDue = payment ? payment.amount - payment.paidAmount : totalAmount;
+
+    // Generating PDF with pdfkit
+    const doc = new PDFDocument({ size: 'A4', margin: 50 });
+    const buffers: Buffer[] = [];
+
+    doc.on('data', (chunk) => buffers.push(chunk));
+    doc.on('end', () => {});
+
+    // Header
+    doc.fontSize(20).text(`Invoice for ${user.name}`, { align: 'center' });
+    doc.fontSize(14).text(`Month: ${month}`, { align: 'center' });
+    doc.moveDown(2);
+
+    // User Details
+    doc.fontSize(12).text('User Details:', { underline: true });
+    doc.text(`Name: ${user.name}`);
+    doc.text(`Contact: ${user.contact}`);
+    doc.moveDown(2);
+
+    // Payment Summary
+    doc.text('Payment Summary:', { underline: true });
+    doc.text(`Total Amount: ₹${totalAmount.toFixed(2)}`);
+    doc.text(`Paid Amount: ₹${totalPaid.toFixed(2)}`);
+    doc.text(`Due Amount: ₹${totalDue.toFixed(2)}`);
+    doc.moveDown(2);
+
+    // Footer
+    doc.text('Thank you for your business!', { align: 'center' });
+
+    doc.end();
+
+    // Wait for PDF generation
+    await new Promise((resolve) => doc.on('end', resolve));
+    return Buffer.concat(buffers);
   }
 }

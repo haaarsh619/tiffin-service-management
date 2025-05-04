@@ -12,10 +12,9 @@ export class OrdersController {
   }
 
   @Get()
-  findAll(@Query('userId') userId?: string, @Query('date') date?: string) {
+  findAll(@Query('userId') userId?: string) {
     return this.ordersService.findAll(
       userId ? parseInt(userId) : undefined,
-      date,
     );
   }
 }

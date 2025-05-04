@@ -1,15 +1,29 @@
-import { IsNumber, IsNotEmpty, IsDateString, Min } from 'class-validator';
+import { ApiProperty } from '@nestjs/swagger';
+import { IsNumber, IsNotEmpty, IsString, Matches, IsIn } from 'class-validator';
 
 export class CreatePaymentDto {
+  @ApiProperty()
   @IsNumber()
   @IsNotEmpty()
   userId: number;
 
-  @IsDateString()
+  @ApiProperty()
+  @IsString()
   @IsNotEmpty()
-  date: string;
+  @Matches(/^\d{4}-\d{2}$/, { message: 'Month must be in YYYY-MM format' })
+  month: string;
 
+  @ApiProperty()
   @IsNumber()
-  @Min(0)
+  @IsNotEmpty()
   amount: number;
+
+  @ApiProperty()
+  @IsNumber()
+  paidAmount: number;
+
+  @ApiProperty()
+  @IsString()
+  @IsIn(['paid', 'unpaid'])
+  status: 'paid' | 'unpaid';
 }

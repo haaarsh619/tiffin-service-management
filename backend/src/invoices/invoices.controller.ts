@@ -1,6 +1,7 @@
-import { Controller, Post, Body, Get, Param } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, ParseIntPipe, Res } from '@nestjs/common';
 import { InvoicesService } from './invoices.service';
 import { CreateInvoiceDto } from './dto/create-invoice.dto';
+import { Response } from 'express';
 
 @Controller('invoices')
 export class InvoicesController {
@@ -12,7 +13,17 @@ export class InvoicesController {
   }
 
   @Get(':userId/:month')
-  generateInvoice(@Param('userId') userId: string, @Param('month') month: string) {
-    return this.invoicesService.generateInvoice(parseInt(userId), month);
+  async generateInvoice(
+    @Param('userId', ParseIntPipe) userId: number,
+    @Param('month') month: string,
+    @Res() res: Response,
+  ) {
+    const pdfBuffer = await this.invoicesService.generateInvoice(userId, month);
+    res.set({
+      'Content-Type': 'application/pdf',
+      'Content-Disposition': `attachment; filename=invoice-${userId}-${month}.pdf`,
+      'Content-Length': pdfBuffer.length,
+    });
+    res.send(pdfBuffer);
   }
 }
