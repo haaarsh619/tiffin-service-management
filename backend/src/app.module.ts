@@ -3,6 +3,11 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { ConfigModule, ConfigService } from '@nestjs/config';
+import { UsersModule } from './users/users.module';
+import { MenuModule } from './menu/menu.module';
+import { OrdersModule } from './orders/orders.module';
+import { PaymentsModule } from './payments/payments.module';
+import { InvoicesModule } from './invoices/invoices.module';
 
 @Module({
   imports: [TypeOrmModule.forRootAsync({
@@ -16,7 +21,13 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
     inject: [ConfigService],
   }), ConfigModule.forRoot({
     isGlobal:true
-  })],
+  }),
+    UsersModule,
+    MenuModule,
+    OrdersModule,
+    PaymentsModule,
+    InvoicesModule,
+  ],
   controllers: [AppController],
   providers: [AppService],
 })
